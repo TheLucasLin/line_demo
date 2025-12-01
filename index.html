@@ -21,12 +21,42 @@
         --accent-hover: #3aa0af;
         --text-primary: #0a4f58;
         --text-secondary: #3e7279;
+        --bg-gradient-start: #f5fdff;
+        --bg-gradient-end: #e6f7fa;
 
         /* Enhanced Glassmorphism */
         --glass-bg: rgba(255, 255, 255, 0.75);
         --glass-border: rgba(255, 255, 255, 0.65);
         --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         --shadow-hover: 0 15px 45px 0 rgba(31, 38, 135, 0.12);
+        --card-hover-bg: rgba(255, 255, 255, 0.85);
+        --card-hover-border: rgba(255, 255, 255, 0.9);
+        --toggle-btn-bg: rgba(255, 255, 255, 0.8);
+        --toggle-btn-text: var(--accent-blue);
+        --doc-item-bg: rgba(255, 255, 255, 0.7);
+        --doc-item-hover-bg: #fff;
+      }
+
+      [data-theme="dark"] {
+        --primary-blue: #1a2628;
+        --secondary-blue: #2c3e42;
+        --accent-blue: #5ec8d8;
+        --accent-hover: #7ad3e0;
+        --text-primary: #e0f7fa;
+        --text-secondary: #b0d0d6;
+        --bg-gradient-start: #0f1719;
+        --bg-gradient-end: #162224;
+
+        --glass-bg: rgba(20, 30, 35, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        --shadow-hover: 0 15px 45px 0 rgba(0, 0, 0, 0.5);
+        --card-hover-bg: rgba(30, 45, 50, 0.85);
+        --card-hover-border: rgba(255, 255, 255, 0.2);
+        --toggle-btn-bg: rgba(30, 45, 50, 0.8);
+        --toggle-btn-text: var(--accent-blue);
+        --doc-item-bg: rgba(40, 55, 60, 0.7);
+        --doc-item-hover-bg: #2c3e42;
       }
 
       * {
@@ -37,7 +67,7 @@
 
       body {
         font-family: "Noto Sans TC", sans-serif;
-        background: linear-gradient(135deg, #f5fdff 0%, #e6f7fa 100%);
+        background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
         min-height: 100vh;
         color: var(--text-primary);
         padding: 40px 20px;
@@ -203,8 +233,8 @@
       .timeline-item.active .timeline-content {
         transform: translateY(-8px);
         box-shadow: var(--shadow-hover);
-        background: rgba(255, 255, 255, 0.85);
-        border-color: rgba(255, 255, 255, 0.9);
+        background: var(--card-hover-bg);
+        border-color: var(--card-hover-border);
       }
 
       .timeline-header {
@@ -325,7 +355,7 @@
       }
 
       .document-item {
-        background: rgba(255, 255, 255, 0.7);
+        background: var(--doc-item-bg);
         border: 1px solid var(--secondary-blue);
         padding: 10px 15px;
         border-radius: 30px;
@@ -345,7 +375,7 @@
       }
 
       .document-item:hover {
-        background: #fff;
+        background: var(--doc-item-hover-bg);
         transform: translateY(-3px);
         box-shadow: 0 8px 15px rgba(77, 181, 197, 0.2);
         border-color: var(--accent-blue);
@@ -425,9 +455,9 @@
       }
 
       .toggle-btn {
-        background: rgba(255, 255, 255, 0.8);
+        background: var(--toggle-btn-bg);
         border: 2px solid var(--accent-blue);
-        color: var(--accent-blue);
+        color: var(--toggle-btn-text);
         padding: 16px 40px;
         border-radius: 50px;
         font-size: 1.4rem;
@@ -520,6 +550,10 @@
           <span>展開全部</span>
         </button>
       </div>
+      <button id="themeToggle" class="toggle-btn" aria-label="切換深色模式" style="position: absolute; top: 0; right: 0; padding: 10px 20px; font-size: 1rem;">
+        <span id="themeIcon">🌙</span>
+        <span id="themeText">深色模式</span>
+      </button>
       <div class="timeline">
         <!-- Item 0 -->
         <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
@@ -871,6 +905,47 @@
         document.addEventListener("keydown", (e) => {
           if (e.key === "Escape" && modal.classList.contains("show")) {
             closeModal();
+          }
+        });
+
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById("themeToggle");
+        const themeIcon = document.getElementById("themeIcon");
+        const themeText = document.getElementById("themeText");
+        const htmlElement = document.documentElement;
+
+        // Check for saved user preference, if any, on load of the website
+        const currentTheme = localStorage.getItem("theme");
+        const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        if (currentTheme) {
+          htmlElement.setAttribute("data-theme", currentTheme);
+          updateThemeButton(currentTheme);
+        } else if (systemPrefersDark) {
+          htmlElement.setAttribute("data-theme", "dark");
+          updateThemeButton("dark");
+        }
+
+        function updateThemeButton(theme) {
+          if (theme === "dark") {
+            themeIcon.textContent = "☀️";
+            themeText.textContent = "淺色模式";
+          } else {
+            themeIcon.textContent = "🌙";
+            themeText.textContent = "深色模式";
+          }
+        }
+
+        themeToggleBtn.addEventListener("click", () => {
+          let theme = htmlElement.getAttribute("data-theme");
+          if (theme === "dark") {
+            htmlElement.setAttribute("data-theme", "light");
+            localStorage.setItem("theme", "light");
+            updateThemeButton("light");
+          } else {
+            htmlElement.setAttribute("data-theme", "dark");
+            localStorage.setItem("theme", "dark");
+            updateThemeButton("dark");
           }
         });
       });
