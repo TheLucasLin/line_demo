@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LINE訊息流程</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- AOS Animation Library -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+    <style>
+      :root {
+        /* Refined Color Palette for Premium Feel */
+        --primary-blue: #f0fafc;
+        --secondary-blue: #d1f2f6;
+        --accent-blue: #4db5c5;
+        --accent-hover: #3aa0af;
+        --text-primary: #0a4f58;
+        --text-secondary: #3e7279;
+
+        /* Enhanced Glassmorphism */
+        --glass-bg: rgba(255, 255, 255, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.65);
+        --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        --shadow-hover: 0 15px 45px 0 rgba(31, 38, 135, 0.12);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Noto Sans TC", sans-serif;
+        background: linear-gradient(135deg, #f5fdff 0%, #e6f7fa 100%);
+        min-height: 100vh;
+        color: var(--text-primary);
+        padding: 40px 20px;
+        line-height: 1.7;
+        overflow-x: hidden;
+        font-size: 20px; /* Base font size kept large for presentation */
+      }
+
+      /* Scroll Progress Bar */
+      .progress-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.3);
+        z-index: 9999;
+      }
+
+      .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-blue), #7ad3e0);
+        width: 0%;
+        transition: width 0.1s ease;
+        box-shadow: 0 0 10px rgba(77, 181, 197, 0.5);
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 90px;
+        font-weight: 700;
+        color: var(--text-primary);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.03);
+        letter-spacing: 2px;
+        font-size: 3.8rem;
+        position: relative;
+        display: inline-block;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      h1::after {
+        content: "";
+        position: absolute;
+        bottom: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: var(--accent-blue);
+        border-radius: 2px;
+      }
+
+      /* Timeline Line */
+      .timeline {
+        position: relative;
+        width: 100%;
+        padding-bottom: 100px;
+      }
+
+      .timeline::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(to bottom, transparent, var(--accent-blue), transparent);
+        z-index: 0;
+        border-radius: 2px;
+      }
+
+      .timeline-item {
+        position: relative;
+        width: 50%;
+        margin-bottom: 80px; /* Increased spacing */
+        /* Animation handled by AOS */
+      }
+
+      /* Odd items (Left) */
+      .timeline-item:nth-child(odd) {
+        left: 0;
+        padding-right: 70px;
+        text-align: right;
+      }
+
+      /* Even items (Right) */
+      .timeline-item:nth-child(even) {
+        left: 50%;
+        padding-left: 70px;
+        text-align: left;
+      }
+
+      /* Timeline Dot */
+      .timeline-dot {
+        position: absolute;
+        top: 30px;
+        width: 28px;
+        height: 28px;
+        background: #fff;
+        border: 6px solid var(--accent-blue);
+        border-radius: 50%;
+        z-index: 1;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 0 0 4px rgba(77, 181, 197, 0.15);
+      }
+
+      .timeline-item:nth-child(odd) .timeline-dot {
+        right: -14px;
+      }
+
+      .timeline-item:nth-child(even) .timeline-dot {
+        left: -14px;
+      }
+
+      .timeline-item:hover .timeline-dot,
+      .timeline-item.active .timeline-dot {
+        transform: scale(1.4);
+        box-shadow: 0 0 0 10px rgba(77, 181, 197, 0.25);
+        background: var(--accent-blue);
+        border-color: #fff;
+      }
+
+      /* Card Styling */
+      .timeline-content {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 35px;
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        overflow: hidden;
+        display: inline-block;
+        width: 90%;
+        text-align: left;
+        position: relative;
+      }
+
+      /* Hover effect for card */
+      .timeline-content::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 24px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+        pointer-events: none;
+      }
+
+      .timeline-content:hover,
+      .timeline-item.active .timeline-content {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-hover);
+        background: rgba(255, 255, 255, 0.85);
+        border-color: rgba(255, 255, 255, 0.9);
+      }
+
+      .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .timeline-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+
+      .expand-icon {
+        color: var(--accent-blue);
+        transition: transform 0.4s ease;
+        font-size: 1.8rem;
+        margin-left: 15px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(77, 181, 197, 0.1);
+        border-radius: 50%;
+      }
+
+      /* Details Section */
+      .timeline-details {
+        max-height: 0;
+        opacity: 0;
+        transition: all 0.5s ease;
+        margin-top: 0;
+        color: var(--text-secondary);
+        font-size: 1.35rem;
+        border-top: 1px solid rgba(77, 181, 197, 0.15);
+        overflow: hidden;
+      }
+
+      .timeline-item.active .timeline-details {
+        max-height: 2000px; /* Generous height for content */
+        opacity: 1;
+        margin-top: 10px;
+        padding-top: 10px;
+      }
+
+      .timeline-details img {
+        width: 100%;
+        height: auto;
+        border-radius: 16px;
+        margin-top: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        transition: all 0.4s ease;
+        display: block;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      .timeline-details img:hover {
+        transform: scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+      }
+
+      .timeline-item.active .expand-icon {
+        transform: rotate(180deg);
+        background: var(--accent-blue);
+        color: white;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 900px) {
+        .timeline::before {
+          left: 40px;
+          transform: none;
+        }
+
+        .timeline-item {
+          width: 100%;
+          padding-left: 90px;
+          padding-right: 0;
+          margin-bottom: 60px;
+        }
+
+        .timeline-item:nth-child(odd),
+        .timeline-item:nth-child(even) {
+          left: 0;
+          text-align: left;
+        }
+
+        .timeline-item:nth-child(odd) .timeline-dot,
+        .timeline-item:nth-child(even) .timeline-dot {
+          left: 26px;
+          right: auto;
+        }
+
+        .timeline-content {
+          width: 100%;
+        }
+
+        h1 {
+          font-size: 2.8rem;
+        }
+      }
+
+      /* Document List Styling */
+      .document-list {
+        list-style: none;
+        padding: 0;
+        margin: 25px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+      }
+
+      .document-item {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid var(--secondary-blue);
+        padding: 10px 15px;
+        border-radius: 30px;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+        cursor: default;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+      }
+
+      .document-item:before {
+        content: "📄";
+        margin-right: 12px;
+        font-size: 1.2em;
+      }
+
+      .document-item:hover {
+        background: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(77, 181, 197, 0.2);
+        border-color: var(--accent-blue);
+        color: var(--accent-hover);
+      }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(10, 30, 35, 0.9);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .modal.show {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 1;
+      }
+
+      .modal-content {
+        width: auto;
+        margin: auto;
+        display: block;
+        max-width: 90%;
+        max-height: 90vh;
+        border-radius: 12px;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+        animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      .close {
+        position: absolute;
+        top: 30px;
+        right: 40px;
+        color: #fff;
+        font-size: 60px;
+        font-weight: 300;
+        transition: 0.3s;
+        cursor: pointer;
+        z-index: 10001;
+        line-height: 0.5;
+      }
+
+      .close:hover {
+        color: var(--accent-blue);
+        transform: rotate(90deg);
+      }
+
+      @keyframes zoomIn {
+        from {
+          transform: scale(0.9);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* Toggle Button Styles */
+      .controls {
+        text-align: center;
+        margin-bottom: 80px;
+        margin-top: -40px;
+        position: relative;
+        z-index: 10;
+      }
+
+      .toggle-btn {
+        background: rgba(255, 255, 255, 0.8);
+        border: 2px solid var(--accent-blue);
+        color: var(--accent-blue);
+        padding: 16px 40px;
+        border-radius: 50px;
+        font-size: 1.4rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 5px 20px rgba(77, 181, 197, 0.2);
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .toggle-btn:hover {
+        background: var(--accent-blue);
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(77, 181, 197, 0.35);
+      }
+
+      .toggle-btn span {
+        position: relative;
+        top: -1px;
+      }
+
+      /* Date Badge Styles */
+      .timeline-date {
+        font-size: 1.1rem;
+        color: #fff;
+        background: var(--accent-blue);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: 500;
+        box-shadow: 0 4px 10px rgba(77, 181, 197, 0.3);
+        display: inline-block;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+      }
+
+      /* Keyboard Navigation Focus */
+      .timeline-item.focused .timeline-content {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 4px rgba(77, 181, 197, 0.3);
+      }
+
+      /* Go Top Button */
+      #goTopBtn {
+        display: none;
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 99;
+        border: none;
+        outline: none;
+        background: var(--accent-blue);
+        color: white;
+        cursor: pointer;
+        padding: 15px;
+        border-radius: 50%;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 15px rgba(77, 181, 197, 0.4);
+        transition: all 0.3s ease;
+        width: 60px;
+        height: 60px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #goTopBtn:hover {
+        background-color: var(--accent-hover);
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(77, 181, 197, 0.6);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Go Top Button -->
+    <button id="goTopBtn" title="回到頂部">↑</button>
+
+    <div class="container">
+      <h1>通知流程</h1>
+      <div class="controls">
+        <button id="toggleAllBtn" class="toggle-btn">
+          <span>展開全部</span>
+        </button>
+      </div>
+      <div class="timeline">
+        <!-- Item 0 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                個人帳號註冊
+                <span class="timeline-date">2025/10/25</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p>請客戶方填寫註冊資料，並由審計人員設定資料觀看權限。</p>
+              <img src="個人帳號註冊.png" alt="個人帳號註冊" />
+            </div>
+          </div>
+        </div>
+        <!-- Item 1 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                預約收件通知
+                <span class="timeline-date">2025/11/01</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p><strong>時間：單月1號</strong></p>
+              <p>發送預約表單，填寫收件時間與地點，安排外務人員前往。</p>
+              <img src="預約收件時間表單填寫通知.png" alt="預約收件時間表單填寫通知" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                尚未預約通知
+                <span class="timeline-date">2025/11/05</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p>若您尚未填寫預約表單，系統將會自動發送提醒通知，確保您的權益不受影響。</p>
+              <img src="提醒尚未填寫.png" alt="提醒尚未填寫" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                出門收件通知
+                <span class="timeline-date">2025/11/09</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p><strong>時間：收件前一日下午 17:00</strong></p>
+              <p>我們將於收件前一天傍晚通知您，確認隔日的收件行程，請您備妥相關文件。</p>
+              <img src="出門收件通知.png" alt="出門收件通知" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 4 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                確認收件通知
+                <span class="timeline-date">2025/11/10</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p><strong>時間：當日早上及下午</strong></p>
+              <p>外務人員收件完成後，會發送通知告知您文件已安全送達本所。</p>
+              <img src="收完件通知已收到.png" alt="收完件通知已收到" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 5 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                營業稅完成通知
+                <span class="timeline-date">2025/11/12</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p>申報完成後，可查看：</p>
+              <ul class="document-list">
+                <li class="document-item">稅單</li>
+                <li class="document-item">申報書</li>
+                <li class="document-item">帳單</li>
+              </ul>
+              <img src="營業稅完成通知.png" alt="營業稅完成通知" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 6 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                更正申報通知
+                <span class="timeline-date">2025/11/13</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p>若有更正申報，將更新相關檔案：</p>
+              <ul class="document-list">
+                <li class="document-item">稅單</li>
+                <li class="document-item">申報書</li>
+                <li class="document-item">帳單</li>
+              </ul>
+              <img src="營業稅更正申報.png" alt="營業稅更正申報" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 7 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                稅金繳納通知
+                <span class="timeline-date">2025/11/15</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p><strong>期限：每月 15 號</strong></p>
+              <p>通知自繳客戶，請務必於期限內完成稅金繳納，以免產生滯納金。</p>
+              <img src="自繳客戶最後繳納稅金期限通知.png" alt="自繳客戶最後繳納稅金期限通知" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 8 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-delay="100">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content" tabindex="0">
+            <div class="timeline-header">
+              <div class="timeline-title">
+                代繳客戶完稅通知
+                <span class="timeline-date">2025/11/16</span>
+              </div>
+              <div class="expand-icon">▼</div>
+            </div>
+            <div class="timeline-details">
+              <p><strong>時間：營業稅後一天</strong></p>
+              <p>嘉威代繳客戶，可在此下載繳費證明檔案。</p>
+              <img src="代繳客戶完稅通知.png" alt="代繳客戶完稅通知" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="imageModal" class="modal">
+      <span class="close">&times;</span>
+      <img class="modal-content" id="modalImage" />
+    </div>
+
+    <!-- AOS Script -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // Initialize AOS
+        AOS.init({
+          duration: 800,
+          offset: 100,
+          once: false, // Animation happens every time you scroll
+          mirror: true,
+          easing: "ease-out-cubic",
+        });
+
+        const items = document.querySelectorAll(".timeline-item");
+        const modal = document.getElementById("imageModal");
+        const modalImg = document.getElementById("modalImage");
+        const closeBtn = document.querySelector(".close");
+        const toggleBtn = document.getElementById("toggleAllBtn");
+        const toggleBtnSpan = toggleBtn.querySelector("span");
+        const progressBar = document.getElementById("progressBar");
+        const goTopBtn = document.getElementById("goTopBtn");
+
+        // Scroll Progress Bar & Go Top Button Logic
+        window.addEventListener("scroll", () => {
+          const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+          const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+          const scrolled = (winScroll / height) * 100;
+          progressBar.style.width = scrolled + "%";
+
+          // Show/Hide Go Top Button
+          if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            goTopBtn.style.display = "flex";
+          } else {
+            goTopBtn.style.display = "none";
+          }
+        });
+
+        // Go Top Functionality
+        goTopBtn.addEventListener("click", () => {
+          window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        });
+
+        // Helper to update button text based on state
+        const updateToggleButton = () => {
+          const allActive = Array.from(items).every((item) => item.classList.contains("active"));
+          if (allActive) {
+            toggleBtnSpan.textContent = "收合全部";
+          } else {
+            toggleBtnSpan.textContent = "展開全部";
+          }
+        };
+
+        // Toggle All Logic
+        toggleBtn.addEventListener("click", () => {
+          const allActive = Array.from(items).every((item) => item.classList.contains("active"));
+
+          if (allActive) {
+            // Collapse all
+            items.forEach((item) => item.classList.remove("active"));
+          } else {
+            // Expand all
+            items.forEach((item) => item.classList.add("active"));
+          }
+          updateToggleButton();
+
+          // Refresh AOS to handle layout changes
+          setTimeout(() => AOS.refresh(), 500);
+        });
+
+        // Timeline item toggle logic
+        items.forEach((item, index) => {
+          const content = item.querySelector(".timeline-content");
+
+          content.addEventListener("click", (e) => {
+            // Prevent toggle if clicking on image (handled separately)
+            if (e.target.tagName === "IMG") return;
+
+            // Toggle current item
+            const isActive = item.classList.contains("active");
+
+            if (isActive) {
+              item.classList.remove("active");
+            } else {
+              item.classList.add("active");
+            }
+
+            // Update main toggle button state
+            updateToggleButton();
+
+            // Refresh AOS
+            setTimeout(() => AOS.refresh(), 500);
+          });
+
+          // Keyboard Navigation Support
+          content.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              content.click();
+            }
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              const nextItem = items[index + 1];
+              if (nextItem) {
+                const nextContent = nextItem.querySelector(".timeline-content");
+                nextContent.focus();
+                nextContent.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              const prevItem = items[index - 1];
+              if (prevItem) {
+                const prevContent = prevItem.querySelector(".timeline-content");
+                prevContent.focus();
+                prevContent.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }
+          });
+
+          // Add focus class for styling
+          content.addEventListener("focus", () => item.classList.add("focused"));
+          content.addEventListener("blur", () => item.classList.remove("focused"));
+        });
+
+        // Image modal logic
+        const images = document.querySelectorAll(".timeline-details img");
+        images.forEach((img) => {
+          img.style.cursor = "zoom-in"; // Add zoom cursor to indicate clickable
+          img.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevent bubbling to timeline content
+            modal.style.display = "flex";
+            // Small delay to allow display:flex to apply before adding opacity class for transition
+            setTimeout(() => {
+              modal.classList.add("show");
+            }, 10);
+            modalImg.src = img.src;
+            modalImg.alt = img.alt;
+          });
+        });
+
+        // Close modal function
+        const closeModal = () => {
+          modal.classList.remove("show");
+          setTimeout(() => {
+            modal.style.display = "none";
+          }, 300); // Match transition duration
+        };
+
+        // Close on button click
+        closeBtn.addEventListener("click", closeModal);
+
+        // Close on backdrop click
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) {
+            closeModal();
+          }
+        });
+
+        // Close on Escape key
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && modal.classList.contains("show")) {
+            closeModal();
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
